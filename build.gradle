@@ -1,0 +1,46 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    ext {
+        debug = false
+        gradleVersion = '2.3.3'
+        minSdkVersion = 14
+        targetSdkVersion = 25
+        compileSdkVersion = 25
+        buildToolsVersion = '25.0.2'
+        versionCode = 1
+        versionName = '25.0.2'
+        applicationId = 'com.tobenull.multiflavorsdk'
+        supportVersion = '25.0.0'
+        espressoVersion = '2.2.2'
+        buildTime = "${new Date().format("yyyyMMdd_HHmmss.SSS")}"
+
+        repo = [
+                'http://172.16.10.13:8081/nexus/content/groups/public',
+                'http://maven.aliyun.com/nexus/content/groups/public',
+                'http://maven.oschina.net/content/groups/public',
+        ]
+    }
+    repositories {
+        rootProject.ext.repo.each { repourl ->
+            maven { url repourl }
+        }
+        jcenter()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:${rootProject.ext.gradleVersion}"
+    }
+}
+
+allprojects {
+    repositories {
+        rootProject.ext.repo.each { repourl ->
+            maven { url repourl }
+        }
+        jcenter()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
