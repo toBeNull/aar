@@ -46,16 +46,16 @@ task clean(type: Delete) {
 }
 
 task createJar(type: Jar) {
-    from zipTree('sdk/build/intermediates/bundles/default/classes.jar')
+    from zipTree('sdk/build/intermediates/bundles/baiduRelease/classes.jar')
     into('assets') {
-        from fileTree(dir: 'sdk/build/intermediates/bundles/default/assets')
+        from fileTree(dir: 'sdk/build/intermediates/baiduRelease/default/assets')
     }
     baseName = "SDK-${rootProject.ext.buildTime}-release"
     destinationDir = file('sdk/build/outputs/aar')
 }
 
 task zipSo(type: Zip) {
-    from('sdk/build/intermediates/bundles/default/jni')
+    from('sdk/build/intermediates/bundles/baiduRelease/jni')
     baseName = "SDK-${rootProject.ext.buildTime}-so"
     destinationDir = file('sdk/build/outputs/aar')
 }

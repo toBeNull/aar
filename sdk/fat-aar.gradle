@@ -79,8 +79,8 @@ ext.embeddedRClasses = new ArrayList()
 ext.build_dir = buildDir.path.replace(File.separator, '/');
 ext.root_dir = project.rootDir.absolutePath.replace(File.separator, '/');
 ext.exploded_aar_dir = "$build_dir/intermediates/exploded-aar";
-ext.classs_release_dir = "$build_dir/intermediates/classes/release";
-ext.bundle_release_dir = "$build_dir/intermediates/bundles/release";
+ext.classs_release_dir = "$build_dir/intermediates/classes/baidu/release";
+ext.bundle_release_dir = "$build_dir/intermediates/bundles/baidu/release";
 ext.manifest_aaapt_dir = "$build_dir/intermediates/manifests/aapt/release";
 ext.generated_rsrc_dir = "$build_dir/generated/source/r/release";
 
@@ -134,46 +134,46 @@ afterEvaluate {
 
     if (dependencies.size() > 0) {
         // Merge Assets
-        generateReleaseAssets.dependsOn embedAssets
-        embedAssets.dependsOn prepareReleaseDependencies
+        generateBaiduReleaseAssets.dependsOn embedAssets
+        embedAssets.dependsOn prepareBaiduReleaseDependencies
 
         // Embed Resources by overwriting the inputResourceSets
-        packageReleaseResources.dependsOn embedLibraryResources
-        embedLibraryResources.dependsOn prepareReleaseDependencies
+        packageBaiduReleaseResources.dependsOn embedLibraryResources
+        embedLibraryResources.dependsOn prepareBaiduReleaseDependencies
 
         // Embed JNI Libraries
-        bundleRelease.dependsOn embedJniLibs
+        bundleBaiduRelease.dependsOn embedJniLibs
 
         if(gradleApiVersion >= 2.3f) {
 
-            embedJniLibs.dependsOn transformNativeLibsWithSyncJniLibsForRelease
+            embedJniLibs.dependsOn transformNativeLibsWithSyncJniLibsForBaiduRelease
             ext.bundle_release_dir = "$build_dir/intermediates/bundles/default"
         }else{
-            embedJniLibs.dependsOn transformNative_libsWithSyncJniLibsForRelease
+            embedJniLibs.dependsOn transformNative_libsWithSyncJniLibsForBaiduRelease
             ext.bundle_release_dir = "$build_dir/intermediates/bundles/release";
         }
 
         // Merge Embedded Manifests
-        bundleRelease.dependsOn embedManifests
-        embedManifests.dependsOn processReleaseManifest
+        bundleBaiduRelease.dependsOn embedManifests
+        embedManifests.dependsOn processBaiduReleaseManifest
 
         // Merge proguard files
         embedLibraryResources.dependsOn embedProguard
-        embedProguard.dependsOn prepareReleaseDependencies
+        embedProguard.dependsOn prepareBaiduReleaseDependencies
 
         // Generate R.java files
-        compileReleaseJavaWithJavac.dependsOn generateRJava
-        generateRJava.dependsOn processReleaseResources
+        compileBaiduReleaseJavaWithJavac.dependsOn generateRJava
+        generateRJava.dependsOn processBaiduReleaseResources
 
         // Bundle the java classes
-        bundleRelease.dependsOn embedJavaJars
-        embedJavaJars.dependsOn compileReleaseJavaWithJavac
+        bundleBaiduRelease.dependsOn embedJavaJars
+        embedJavaJars.dependsOn compileBaiduReleaseJavaWithJavac
 
         // If proguard is enabled, run the tasks that bundleRelease should depend on before proguard
         if (tasks.findByPath('proguardRelease') != null) {
-            proguardRelease.dependsOn embedJavaJars
+            proguardBaiduRelease.dependsOn embedJavaJars
         } else if (tasks.findByPath('transformClassesAndResourcesWithProguardForRelease') != null) {
-            transformClassesAndResourcesWithProguardForRelease.dependsOn embedJavaJars
+            transformClassesAndResourcesWithProguardForBaiduRelease.dependsOn embedJavaJars
         }
     }
 }
@@ -181,8 +181,8 @@ afterEvaluate {
 task embedLibraryResources << {
     println "Running FAT-AAR Task :embedLibraryResources"
 
-    def oldInputResourceSet = packageReleaseResources.inputResourceSets
-    packageReleaseResources.conventionMapping.map("inputResourceSets") {
+    def oldInputResourceSet = packageBaiduReleaseResources.inputResourceSets
+    packageBaiduReleaseResources.conventionMapping.map("inputResourceSets") {
         getMergedInputResourceSets(oldInputResourceSet)
     }
 }
