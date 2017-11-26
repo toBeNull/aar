@@ -1,11 +1,12 @@
-apply plugin: 'com.android.library'
-apply from: 'fat-aar.gradle'
+apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
 
+
     defaultConfig {
+        applicationId "com.tobenull.alibabademo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode rootProject.ext.versionCode
@@ -15,31 +16,24 @@ android {
 
     }
 
-    productFlavors {
-        baidu{}
-        alibaba{}
-    }
-
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    repositories {
+        flatDir {
+            dirs 'libs'
+        }
+    }
 
 }
 
 dependencies {
-    if (rootProject.ext.debug) {
-        compile project(':base')
-    } else {
-        embedded project(':base')
-    }
-//    compile fileTree(dir: 'libs', include: ['*.jar'])
-    alibabaCompile files('libs/gaode-map.jar')
     compile "com.android.support:appcompat-v7:${rootProject.ext.supportVersion}"
-    testCompile 'junit:junit:4.12'
-    androidTestCompile("com.android.support.test.espresso:espresso-core:${rootProject.ext.espressoVersion}", {
+    androidTestCompile("com.android.support:appcompat-v7:${rootProject.ext.supportVersion}", {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
+    compile(name: 'sdk-alibaba-release', ext: 'aar')
 }
