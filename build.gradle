@@ -9,7 +9,7 @@ buildscript {
         compileSdkVersion = 25
         buildToolsVersion = '25.0.2'
         versionCode = 1
-        versionName = '25.0.2'
+        versionName = '1.0'
         applicationId = 'com.tobenull.multiflavorsdk'
         supportVersion = '25.0.0'
         espressoVersion = '2.2.2'
@@ -44,3 +44,26 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+
+task createJar(type: Jar) {
+    from zipTree('sdk/build/intermediates/bundles/default/classes.jar')
+    into('assets') {
+        from fileTree(dir: 'sdk/build/intermediates/bundles/default/assets')
+    }
+    baseName = "SDK-${rootProject.ext.buildTime}-release"
+    destinationDir = file('sdk/build/outputs/aar')
+}
+
+task zipSo(type: Zip) {
+    from('sdk/build/intermediates/bundles/default/jni')
+    baseName = "SDK-${rootProject.ext.buildTime}-so"
+    destinationDir = file('sdk/build/outputs/aar')
+}
+
+task main() {
+
+}
+
+createJar.dependsOn ':sdk:build'
+zipSo.dependsOn createJar
+main.dependsOn zipSo

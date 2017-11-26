@@ -1,4 +1,5 @@
 apply plugin: 'com.android.library'
+apply from: 'fat-aar.gradle'
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -24,7 +25,11 @@ android {
 }
 
 dependencies {
-    compile project(':base')
+    if (rootProject.ext.debug) {
+        compile project(':base')
+    } else {
+        embedded project(':base')
+    }
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile "com.android.support:appcompat-v7:${rootProject.ext.supportVersion}"
     testCompile 'junit:junit:4.12'
