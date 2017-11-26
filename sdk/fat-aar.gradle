@@ -79,9 +79,13 @@ ext.embeddedRClasses = new ArrayList()
 ext.build_dir = buildDir.path.replace(File.separator, '/');
 ext.root_dir = project.rootDir.absolutePath.replace(File.separator, '/');
 ext.exploded_aar_dir = "$build_dir/intermediates/exploded-aar";
-ext.classs_release_dir = "$build_dir/intermediates/classes/baidu/release";
-ext.bundle_release_dir = "$build_dir/intermediates/bundles/baidu/release";
-ext.manifest_aaapt_dir = "$build_dir/intermediates/manifests/aapt/release";
+//ext.classs_release_dir = "$build_dir/intermediates/classes/baidu/release";
+//ext.bundle_release_dir = "$build_dir/intermediates/bundles/baidu/release";
+//ext.manifest_aaapt_dir = "$build_dir/intermediates/manifests/aapt/release";
+ext.class_release_dir = new HashMap<String, String>()
+ext.bundle_release_dir = new HashMap<String, String>()
+ext.manifest_aaapt_dir = new HashMap<String, String>()
+
 ext.generated_rsrc_dir = "$build_dir/generated/source/r/release";
 
 ext.base_r2x_dir = "$build_dir/fat-aar/release/";
@@ -96,11 +100,8 @@ afterEvaluate {
     def dependencies = new ArrayList(configurations.embedded.resolvedConfiguration.firstLevelModuleDependencies)
     dependencies.reverseEach {
 
-        def aarPath;
-        if (gradleApiVersion >= 2.3f)
-            aarPath = "${root_dir}/${it.moduleName}/build/intermediates/bundles/default"
-        else
-            aarPath = "${exploded_aar_dir}/${it.moduleGroup}/${it.moduleName}/${it.moduleVersion}"
+        // 考虑到gradle 版本都大于2.3了，去掉原来的版本判断过程
+        def aarPath = "${root_dir}/${it.moduleName}/build/intermediates/bundles/default"
         it.moduleArtifacts.each {
             artifact ->
 
@@ -111,12 +112,12 @@ afterEvaluate {
                         embeddedAarFiles.add(artifact)
                     }
                     if (!embeddedAarDirs.contains(aarPath)) {
-                        if( artifact.file.isFile() ){
+                        if (artifact.file.isFile()) {
                             println artifact.file
                             println aarPath
 
                             copy {
-                                from zipTree( artifact.file )
+                                from zipTree(artifact.file)
                                 into aarPath
                             }
                         }
@@ -132,58 +133,222 @@ afterEvaluate {
         }
     }
 
+    def products = new ArrayList(android.productFlavors)
+    println "products: " + products.size()
+
     if (dependencies.size() > 0) {
-        // Merge Assets
-        generateBaiduReleaseAssets.dependsOn embedAssets
-        embedAssets.dependsOn prepareBaiduReleaseDependencies
 
-        // Embed Resources by overwriting the inputResourceSets
-        packageBaiduReleaseResources.dependsOn embedLibraryResources
-        embedLibraryResources.dependsOn prepareBaiduReleaseDependencies
+        products.each {
+            String product = it.name
+            String Product = product.capitalize()
+            println "Product: $Product, product: $product"
 
-        // Embed JNI Libraries
-        bundleBaiduRelease.dependsOn embedJniLibs
+            ext.class_release_dir.putAt(product, "$build_dir/intermediates/classes/$product/release")
+            ext.bundle_release_dir.putAt(product, "$build_dir/intermediates/bundles/${product}Release")
+            ext.manifest_aaapt_dir.putAt(product, "$build_dir/intermediates/manifests/aapt/$product/release")
 
-        if(gradleApiVersion >= 2.3f) {
+            // Merge Assets
+            tasks.getByName("generate${Product}ReleaseAssets").dependsOn embedAssets
+            embedAssets.dependsOn "prepare${Product}ReleaseDependencies"
 
-            embedJniLibs.dependsOn transformNativeLibsWithSyncJniLibsForBaiduRelease
-            ext.bundle_release_dir = "$build_dir/intermediates/bundles/default"
-        }else{
-            embedJniLibs.dependsOn transformNative_libsWithSyncJniLibsForBaiduRelease
-            ext.bundle_release_dir = "$build_dir/intermediates/bundles/release";
+            // Embed Resources by overwriting the inputResourceSets
+            tasks.create("embedLibraryResources$Product").doLast {
+                println "Running FAT-AAR Task :embedLibraryResources"
+
+                def oldInputResourceSet = tasks.getByName("package${Product}ReleaseResources").inputResourceSets
+                tasks.getByName("package${Product}ReleaseResources").conventionMapping.map("inputResourceSets") {
+                    getMergedInputResourceSets(oldInputResourceSet)
+                }
+            }
+
+            tasks.getByName("package${Product}ReleaseResources").dependsOn "embedLibraryResources$Product"
+            tasks.getByName("embedLibraryResources$Product").dependsOn "prepare${Product}ReleaseDependencies"
+
+            // Embed JNI Libraries
+            tasks.create("embedJniLibs$Product").doLast {
+                println "Running FAT-AAR Task :embedJniLibs"
+
+                embeddedAarDirs.each { aarPath ->
+                    println "======= Copying JNI from $aarPath/jni"
+                    // Copy JNI Folders
+                    copy {
+                        from fileTree(dir: "$aarPath/jni")
+                        into file(bundle_release_dir.getAt(product) + "/jni")
+                    }
+                }
+            }
+
+            tasks.getByName("bundle${Product}Release").dependsOn "embedJniLibs$Product"
+            tasks.getByName("embedJniLibs$Product").dependsOn "transformNativeLibsWithSyncJniLibsFor${Product}Release"
+
+            // Merge Embedded Manifests
+            tasks.create("embedManifests$Product").doLast {
+                println "Running FAT-AAR Task :embedManifests"
+
+                ILogger mLogger = new MiLogger()
+                List libraryManifests = new ArrayList<>()
+
+                embeddedAarDirs.each { aarPath ->
+                    File dependencyManifest = file("$aarPath/AndroidManifest.xml")
+
+                    if (!libraryManifests.contains(aarPath) && dependencyManifest.exists()) {
+                        libraryManifests.add(dependencyManifest)
+                    }
+                }
+
+                File reportFile = file("${build_dir}/embedManifestReport.txt")
+                File origManifest = file(bundle_release_dir.getAt(product) + "/AndroidManifest.xml")
+                File copyManifest = file(bundle_release_dir.getAt(product) + "/AndroidManifest.orig.xml")
+                File aaptManifest = file(manifest_aaapt_dir.getAt(product) + "/AndroidManifest.xml")
+
+                if (!origManifest.exists()) {
+                    origManifest = file("./src/main/AndroidManifest.xml")
+                }
+
+                if (!origManifest.exists()) {
+                    return
+                }
+
+                copy {
+                    from origManifest.parentFile
+                    into copyManifest.parentFile
+                    include origManifest.name
+                    rename(origManifest.name, copyManifest.name)
+                }
+
+                try {
+                    Invoker manifestMergerInvoker = ManifestMerger2.newMerger(copyManifest, mLogger, MergeType.APPLICATION)
+
+                    manifestMergerInvoker.addLibraryManifests(libraryManifests.toArray(new File[libraryManifests.size()]))
+
+                    // manifestMergerInvoker.setPlaceHolderValues(placeHolders)
+                    manifestMergerInvoker.setMergeReportFile(reportFile);
+
+                    MergingReport mergingReport = manifestMergerInvoker.merge();
+
+                    mLogger.info("Merging result:" + mergingReport.getResult());
+                    MergingReport.Result result = mergingReport.getResult();
+                    switch (result) {
+                        case MergingReport.Result.WARNING:
+                            mergingReport.log(mLogger);
+                    // fall through since these are just warnings.
+                        case MergingReport.Result.SUCCESS:
+                            XmlDocument xmlDocument = mergingReport.getMergedXmlDocument(MergingReport.MergedManifestKind.MERGED)
+                            try {
+                                String annotatedDocument = mergingReport.getActions().blame(xmlDocument)
+                                mLogger.verbose(annotatedDocument);
+                            } catch (Exception e) {
+                                mLogger.error(e, "cannot print resulting xml")
+                            }
+                            save(xmlDocument, origManifest)
+                            mLogger.info("Merged manifest saved to " + origManifest)
+                            if (aaptManifest.exists()) {
+                                new PlaceholderEncoder().visit(xmlDocument)
+                                save(xmlDocument, aaptManifest)
+                                mLogger.info("Merged aapt safe manifest saved to " + aaptManifest)
+                            }
+                            break
+                        case MergingReport.Result.ERROR:
+                            mergingReport.log(mLogger)
+                            throw new RuntimeException(mergingReport.getReportString())
+                        default:
+                            throw new RuntimeException("Unhandled result type : " + mergingReport.getResult())
+                    }
+                } catch (RuntimeException e) {
+                    // Unacceptable error
+                    e.printStackTrace()
+                    throw new RuntimeException(e)
+                }
+            }
+
+            tasks.getByName("bundle${Product}Release").dependsOn "embedManifests$Product"
+            tasks.getByName("embedManifests$Product").dependsOn "process${Product}ReleaseManifest"
+
+            // Merge proguard files
+            tasks.create("embedProguard$Product").doLast {
+                println "Running FAT-AAR Task :embedProguard"
+
+                def proguardRelease = file(bundle_release_dir.getAt(it.name) + "/proguard.txt")
+                embeddedAarDirs.each { aarPath ->
+                    try {
+                        def proguardLibFile = file("$aarPath/proguard.txt")
+                        if (proguardLibFile.exists()) {
+                            proguardRelease.append("\n" + proguardLibFile.text)
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace()
+                        throw e
+                    }
+                }
+            }
+
+            tasks.getByName("embedLibraryResources$Product").dependsOn "embedProguard$Product"
+            tasks.getByName("embedProguard$Product").dependsOn tasks.getByName("prepare${Product}ReleaseDependencies")
+
+            // Generate R.java files
+            tasks.getByName("compile${Product}ReleaseJavaWithJavac").dependsOn generateRJava
+            generateRJava.dependsOn "process${Product}ReleaseResources"
+
+            // Bundle the java classes
+            tasks.create("collectRClass$Product").doLast {
+                println "COLLECTRCLASS"
+                delete base_r2x_dir
+                mkdir base_r2x_dir
+
+                copy {
+                    from class_release_dir.getAt(product)
+                    include embeddedRClasses
+                    into base_r2x_dir
+                }
+            }
+
+            tasks.create("embedJavaJars$Product").dependsOn("collectRClass$Product").doLast {
+                println "Running FAT-AAR Task :embedJavaJars: "
+
+                embeddedAarFiles.each { artifact ->
+                    println "Running FAT-AAR Task :embedJavaJars, AbsolutePath: " + artifact.file.getAbsolutePath()
+                    FileTree aarFileTree = zipTree(artifact.file.getAbsolutePath())
+
+                    def aarFile = aarFileTree.files.find { it.name.contains("classes.jar") }
+
+                    println "Running FAT-AAR Task :embedJavaJars, aarFile: " + aarFile.name
+
+                    copy {
+                        from zipTree(aarFile)
+                        into class_release_dir.getAt(product)
+                    }
+                }
+
+                embeddedAarDirs.each { aarPath ->
+                    println "Running FAT-AAR Task :embedJavaJars, aarPath: $aarPath"
+
+                    // Copy all additional jar files to bundle lib
+                    FileTree jars = fileTree(dir: "$aarPath", include: '*.jar', exclude: 'classes.jar')
+                    jars += fileTree(dir: "$aarPath/libs", include: '*.jar')
+
+                    println "jars: $jars, size: " + jars.size()
+                    jars.each {
+                        println "jars: " + it.name + ", " + it.absolutePath
+                        def jarFile = it.absoluteFile
+                        copy {
+                            from zipTree(jarFile)
+                            into class_release_dir.getAt(product)
+                        }
+                    }
+                }
+            }
+
+            tasks.getByName("bundle${Product}Release").dependsOn "embedJavaJars$Product"
+            tasks.getByName("embedJavaJars$Product").dependsOn "compile${Product}ReleaseJavaWithJavac"
+
+            // If proguard is enabled, run the tasks that bundleRelease should depend on before proguard
+            if (tasks.findByPath('proguardRelease') != null) {
+                tasks.getByName(proguardRelease).dependsOn "embedJavaJars$Product"
+            } else if (tasks.findByPath('transformClassesAndResourcesWithProguardForRelease') != null) {
+                transformClassesAndResourcesWithProguardForRelease.dependsOn "embedJavaJars$Product"
+            }
+
         }
-
-        // Merge Embedded Manifests
-        bundleBaiduRelease.dependsOn embedManifests
-        embedManifests.dependsOn processBaiduReleaseManifest
-
-        // Merge proguard files
-        embedLibraryResources.dependsOn embedProguard
-        embedProguard.dependsOn prepareBaiduReleaseDependencies
-
-        // Generate R.java files
-        compileBaiduReleaseJavaWithJavac.dependsOn generateRJava
-        generateRJava.dependsOn processBaiduReleaseResources
-
-        // Bundle the java classes
-        bundleBaiduRelease.dependsOn embedJavaJars
-        embedJavaJars.dependsOn compileBaiduReleaseJavaWithJavac
-
-        // If proguard is enabled, run the tasks that bundleRelease should depend on before proguard
-        if (tasks.findByPath('proguardRelease') != null) {
-            proguardBaiduRelease.dependsOn embedJavaJars
-        } else if (tasks.findByPath('transformClassesAndResourcesWithProguardForRelease') != null) {
-            transformClassesAndResourcesWithProguardForBaiduRelease.dependsOn embedJavaJars
-        }
-    }
-}
-
-task embedLibraryResources << {
-    println "Running FAT-AAR Task :embedLibraryResources"
-
-    def oldInputResourceSet = packageBaiduReleaseResources.inputResourceSets
-    packageBaiduReleaseResources.conventionMapping.map("inputResourceSets") {
-        getMergedInputResourceSets(oldInputResourceSet)
     }
 }
 
@@ -216,8 +381,7 @@ private List getMergedInputResourceSets(List inputResourceSet) {
                 if (startIndex < 1 || endIndex < 1)
                     return;
                 resname = aarPath.substring(startIndex, endIndex).replace('/', ':')
-            }
-            else
+            } else
                 resname = (aarPath.split(exploded_aar_dir)[1]).replace('/', ':');
             def rs = ResourceSetClass.newInstance([resname, true] as Object[])
             rs.addSource(file("$aarPath/res"))
@@ -244,26 +408,6 @@ task embedAssets << {
     }
 }
 
-/**
- * Merge proguard.txt files from all library modules
- * @author Marian Klühspies
- */
-task embedProguard << {
-    println "Running FAT-AAR Task :embedProguard"
-
-    def proguardRelease = file("$bundle_release_dir/proguard.txt")
-    embeddedAarDirs.each { aarPath ->
-        try {
-            def proguardLibFile = file("$aarPath/proguard.txt")
-            if (proguardLibFile.exists())
-                proguardRelease.append("\n" + proguardLibFile.text)
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
-        }
-    }
-}
-
 
 task generateRJava << {
     println "Running FAT-AAR Task :generateRJava"
@@ -272,7 +416,7 @@ task generateRJava << {
     def mainManifestFile = android.sourceSets.main.manifest.srcFile;
     def libPackageName = "";
 
-    if(mainManifestFile.exists()) {
+    if (mainManifestFile.exists()) {
 
         libPackageName = new XmlParser().parse(mainManifestFile).@package
     }
@@ -280,11 +424,11 @@ task generateRJava << {
     embeddedAarDirs.each { aarPath ->
 
         def manifestFile = file("$aarPath/AndroidManifest.xml");
-        if(!manifestFile.exists()) {
+        if (!manifestFile.exists()) {
             manifestFile = file("./src/main/AndroidManifest.xml");
         }
 
-        if(manifestFile.exists()) {
+        if (manifestFile.exists()) {
             def aarManifest = new XmlParser().parse(manifestFile);
             def aarPackageName = aarManifest.@package
 
@@ -326,184 +470,6 @@ task generateRJava << {
             embeddedRClasses += "$packagePath/R\$*.class"
         }
 
-    }
-}
-
-task collectRClass << {
-    println "COLLECTRCLASS"
-    delete base_r2x_dir
-    mkdir base_r2x_dir
-
-    copy {
-        from classs_release_dir
-        include embeddedRClasses
-        into base_r2x_dir
-    }
-}
-
-task embedRClass(type: org.gradle.jvm.tasks.Jar, dependsOn: collectRClass) {
-    println "EMBED R CLASS"
-
-    destinationDir file("$bundle_release_dir/libs/")
-    println destinationDir
-    from base_r2x_dir
-    println base_r2x_dir
-}
-
-/**
- * To embed the class files, we need to change the R.class to X.class, so we explode it in another
- * location, proguard it to modify R to X, and then finally copy it to build location
- */
-task embedJavaJars(dependsOn: embedRClass) << {
-    println "Running FAT-AAR Task :embedJavaJars"
-
-    embeddedAarDirs.each { aarPath ->
-
-        // Explode all classes.jar files to classes so that they can be proguarded
-        def jar_dir
-        if (gradleApiVersion >= 2.3f)
-            jar_dir = "$aarPath"
-        else
-            jar_dir = "$aarPath/jars"
-
-        if(embeddedAarFiles.size() > 0){
-
-            embeddedAarFiles.each {
-                artifact ->
-                    FileTree aarFileTree = zipTree(artifact.file.getAbsolutePath());
-
-                    def aarFile = aarFileTree.files.find { it.name.contains("classes.jar") }
-
-                    copy {
-                        from zipTree(aarFile)
-                        into classs_release_dir
-                    }
-            }
-
-        }else{
-
-		    println jar_dir
-		    println classs_release_dir
-		    println bundle_release_dir
-		    println embeddedJars
-
-		    copy {
-		        from zipTree(jar_dir + "/classes.jar")
-		        into classs_release_dir
-		    }
-        }
-
-        // Copy all additional jar files to bundle lib
-        FileTree jars = fileTree(dir: jar_dir, include: '*.jar', exclude: 'classes.jar')
-        jars += fileTree(dir: jar_dir + "/libs", include: '*.jar')
-        jars += fileTree(dir: "$aarPath/libs", include: '*.jar')
-
-        copy {
-            from jars
-            into file("$bundle_release_dir/libs")
-        }
-
-        // Copy all embedded jar files to bundle lib
-        copy {
-            from embeddedJars
-            into file("$bundle_release_dir/libs")
-        }
-    }
-}
-
-/**
- * For some reason, adding to the jniLibs source set does not work. So we simply copy all files.
- */
-task embedJniLibs << {
-    println "Running FAT-AAR Task :embedJniLibs"
-
-    embeddedAarDirs.each { aarPath ->
-        println "======= Copying JNI from $aarPath/jni"
-        // Copy JNI Folders
-        copy {
-            from fileTree(dir: "$aarPath/jni")
-            into file("$bundle_release_dir/jni")
-        }
-    }
-}
-
-task embedManifests << {
-    println "Running FAT-AAR Task :embedManifests"
-
-    ILogger mLogger = new MiLogger()
-    List libraryManifests = new ArrayList<>()
-
-    embeddedAarDirs.each { aarPath ->
-        File dependencyManifest = file("$aarPath/AndroidManifest.xml")
-
-        if (!libraryManifests.contains(aarPath) && dependencyManifest.exists()) {
-            libraryManifests.add(dependencyManifest)
-        }
-    }
-
-    File reportFile = file("${build_dir}/embedManifestReport.txt")
-
-    File origManifest = file("$bundle_release_dir/AndroidManifest.xml")
-    File copyManifest = file("$bundle_release_dir/AndroidManifest.orig.xml")
-    File aaptManifest = file("$manifest_aaapt_dir/AndroidManifest.xml")
-
-    if(!origManifest.exists()) {
-        origManifest = file("./src/main/AndroidManifest.xml")
-    }
-
-    if(!origManifest.exists()) {
-        return;
-    }
-
-    copy {
-        from origManifest.parentFile
-        into copyManifest.parentFile
-        include origManifest.name
-        rename(origManifest.name, copyManifest.name)
-    }
-
-    try {
-        Invoker manifestMergerInvoker = ManifestMerger2.newMerger(copyManifest, mLogger, MergeType.APPLICATION)
-
-        manifestMergerInvoker.addLibraryManifests(libraryManifests.toArray(new File[libraryManifests.size()]))
-
-        // manifestMergerInvoker.setPlaceHolderValues(placeHolders)
-        manifestMergerInvoker.setMergeReportFile(reportFile);
-
-        MergingReport mergingReport = manifestMergerInvoker.merge();
-
-        mLogger.info("Merging result:" + mergingReport.getResult());
-        MergingReport.Result result = mergingReport.getResult();
-        switch (result) {
-            case MergingReport.Result.WARNING:
-                mergingReport.log(mLogger);
-        // fall through since these are just warnings.
-            case MergingReport.Result.SUCCESS:
-                XmlDocument xmlDocument = mergingReport.getMergedXmlDocument(MergingReport.MergedManifestKind.MERGED);
-                try {
-                    String annotatedDocument = mergingReport.getActions().blame(xmlDocument);
-                    mLogger.verbose(annotatedDocument);
-                } catch (Exception e) {
-                    mLogger.error(e, "cannot print resulting xml");
-                }
-                save(xmlDocument, origManifest);
-                mLogger.info("Merged manifest saved to " + origManifest);
-                if (aaptManifest.exists()) {
-                    new PlaceholderEncoder().visit(xmlDocument);
-                    save(xmlDocument, aaptManifest);
-                    mLogger.info("Merged aapt safe manifest saved to " + aaptManifest);
-                }
-                break;
-            case MergingReport.Result.ERROR:
-                mergingReport.log(mLogger);
-                throw new RuntimeException(mergingReport.getReportString());
-            default:
-                throw new RuntimeException("Unhandled result type : " + mergingReport.getResult());
-        }
-    } catch (RuntimeException e) {
-        // Unacceptable error
-        e.printStackTrace()
-        throw new RuntimeException(e);
     }
 }
 
