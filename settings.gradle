@@ -1,1 +1,1 @@
-include ':app', ':base', ':sdk', ':baidudemo', ':alibabademo'
+include ':app', ':base', ':sdk', ':http'

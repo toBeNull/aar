@@ -18,6 +18,7 @@ android {
     productFlavors {
         baidu{}
         alibaba{}
+        tencent{}
     }
 
     buildTypes {
@@ -34,6 +35,7 @@ dependencies {
         compile project(':base')
     } else {
         embedded project(':base')
+        embedded project(':http')
     }
 //    compile fileTree(dir: 'libs', include: ['*.jar'])
     alibabaCompile files('libs/gaode-map.jar')
