@@ -64,4 +64,8 @@ rootProject.ext.SDKProperties.each {
             into "../app/src/$product"
         }
     }
+    ant.replaceregexp(match:'_[a-z]+_BUILD_TIME:(20\\d{6}_\\d{6}.\\d{3})?',
+            replace:"_${product}_BUILD_TIME:${rootProject.ext.buildTime}", byline:true) {
+        fileset(dir: "src/$product/java/com/tobenull/sdk", includes: 'SDK.java')
+    }
 }

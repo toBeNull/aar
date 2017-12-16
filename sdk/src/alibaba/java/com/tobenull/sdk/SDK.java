@@ -21,6 +21,7 @@ public class SDK extends BaseSDK {
 
 	@Override
 	public void init() {
+		TLog.d("SDK->init, _al_BUILD_TIME:");
 		super.init();
 		initAlibaba();
 	}

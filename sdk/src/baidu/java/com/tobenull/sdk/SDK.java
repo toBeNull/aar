@@ -16,6 +16,7 @@ public class SDK extends BaseSDK {
 
 	@Override
 	public void init() {
+		TLog.d("SDK->init, _a_BUILD_TIME:");
 		super.init();
 		initBaidu();
 	}
