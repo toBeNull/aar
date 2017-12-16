@@ -2,10 +2,10 @@
 
 &emsp;&emsp;本项目在[android-fat-aar][0]的基础上实现了Android多渠道SDK的开发、构建与调试，此外还实现了同时生成jar+so类型的sdk、自动生成studio及eclipse版demo、sdk文档等功能。
 
- - [x] 多渠道SDK的构建 [done]
- - [x] 多渠道SDK的调试 [done]
- - [ ] 自动生成demo [todo]
- - [ ] 自动生成文档 [todo]
+ - [x] 多渠道SDK的构建
+ - [x] 多渠道SDK的调试
+ - [ ] 自动生成demo
+ - [ ] 自动生成文档
 
 # 二.开发工具版本
 android多渠道sdk构建
