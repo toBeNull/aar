@@ -11,10 +11,17 @@ android {
         versionName rootProject.ext.versionName
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
-//    productFlavors {
-//        baidu{}
-//        alibaba{}
-//    }
+    productFlavors {
+        baidu{
+            applicationId 'com.baidu.demo'
+        }
+        alibaba{
+            applicationId 'com.alibaba.demo'
+        }
+        tencent{
+            applicationId 'com.tencent.demo'
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
@@ -30,7 +37,10 @@ android {
 
 dependencies {
     if (rootProject.ext.debug) {
-        compile project(':sdk')
+//        compile project(':sdk')
+        baiduCompile project(path: ':sdk', configuration: 'baiduRelease')
+        alibabaCompile project(path: ':sdk', configuration: 'alibabaRelease')
+        tencentCompile project(path: ':sdk', configuration: 'tencentRelease')
     } else {
 //        compile(name: 'sdk-release', ext: 'aar')
     }

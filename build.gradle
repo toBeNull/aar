@@ -2,7 +2,7 @@
 
 buildscript {
     ext {
-        debug = false
+        debug = true
         gradleVersion = '2.3.3'
         minSdkVersion = 14
         targetSdkVersion = 25
