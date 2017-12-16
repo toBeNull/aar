@@ -17,9 +17,9 @@ android {
 
     publishNonDefault true
     productFlavors {
-        baidu{}
-        alibaba{}
-        tencent{}
+        rootProject.ext.SDKProperties.each {
+            productFlavors.create(it.product)
+        }
     }
 
     buildTypes {
@@ -44,4 +44,24 @@ dependencies {
     androidTestCompile("com.android.support.test.espresso:espresso-core:${rootProject.ext.espressoVersion}", {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
+}
+
+rootProject.ext.SDKProperties.each {
+    def product = it.product
+    if (it.packageName == "" || it.packageName.length() <= 0)
+        return
+    // 如果渠道对应的sdk源码包不存在，则从base复制一份，根据base进行修改
+    if (!file("src/$product").exists()) {
+        copy {
+            from "src/baidu"
+            into "src/$product"
+        }
+    }
+    // 如果渠道对应的demo源码包不存在，则从base复制一份，根据base进行修改
+    if (!file("../app/src/$product").exists()) {
+        copy {
+            from "../app/src/baidu"
+            into "../app/src/$product"
+        }
+    }
 }

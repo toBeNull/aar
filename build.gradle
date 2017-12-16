@@ -15,6 +15,13 @@ buildscript {
         espressoVersion = '2.2.2'
         buildTime = "${new Date().format("yyyyMMdd_HHmmss.SSS")}"
 
+        SDKProperties = [
+                [product: 'alibaba',  packageName: 'com.alibaba.demo', type: 'jar'],
+                [product: 'baidu',    packageName: 'com.baidu.demo',   type: 'aarjar'],
+                [product: 'tencent',  packageName: 'com.tencent.demo', type: 'aar'],
+//                [product: 'iqiyi',    packageName: 'com.iqiyi.demo',   type: 'aar'],
+        ]
+
         repo = [
                 'http://172.16.10.13:8081/nexus/content/groups/public',
                 'http://maven.aliyun.com/nexus/content/groups/public',

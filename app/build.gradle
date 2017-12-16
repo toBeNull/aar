@@ -12,14 +12,8 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     productFlavors {
-        baidu{
-            applicationId 'com.baidu.demo'
-        }
-        alibaba{
-            applicationId 'com.alibaba.demo'
-        }
-        tencent{
-            applicationId 'com.tencent.demo'
+        rootProject.ext.SDKProperties.each {
+            productFlavors.create(it.product).setApplicationId(it.packageName)
         }
     }
     buildTypes {
@@ -37,10 +31,12 @@ android {
 
 dependencies {
     if (rootProject.ext.debug) {
-//        compile project(':sdk')
-        baiduCompile project(path: ':sdk', configuration: 'baiduRelease')
-        alibabaCompile project(path: ':sdk', configuration: 'alibabaRelease')
-        tencentCompile project(path: ':sdk', configuration: 'tencentRelease')
+        rootProject.ext.SDKProperties.each {
+            println "configurations: ${it.product}Compile"
+            dependencies.add("${it.product}Compile", project(
+                    path: ':sdk', configuration: "${it.product}Release")
+            )
+        }
     } else {
 //        compile(name: 'sdk-release', ext: 'aar')
     }
