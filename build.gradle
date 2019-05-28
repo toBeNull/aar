@@ -5,13 +5,13 @@ buildscript {
         debug = true
         gradleVersion = '2.3.3'
         minSdkVersion = 14
-        targetSdkVersion = 25
-        compileSdkVersion = 25
-        buildToolsVersion = '25.0.2'
+        targetSdkVersion = 27
+        compileSdkVersion = 27
+        buildToolsVersion = '27.0.1'
         versionCode = 1
         versionName = '1.0'
         applicationId = 'com.tobenull.multiflavorsdk'
-        supportVersion = '25.0.0'
+        supportVersion = '27.0.1'
         espressoVersion = '2.2.2'
         buildTime = "${new Date().format("yyyyMMdd_HHmmss.SSS")}"
 
@@ -23,7 +23,6 @@ buildscript {
         ]
 
         repo = [
-                'http://172.16.10.13:8081/nexus/content/groups/public',
                 'http://maven.aliyun.com/nexus/content/groups/public',
                 'http://maven.oschina.net/content/groups/public',
         ]
