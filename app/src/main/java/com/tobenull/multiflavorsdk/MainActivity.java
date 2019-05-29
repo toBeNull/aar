@@ -1,6 +1,6 @@
 package com.tobenull.multiflavorsdk;
 
-import android.support.v7.app.AppCompatActivity;
+import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
@@ -10,7 +10,7 @@ import android.widget.TextView;
 import com.tobenull.multiflavorsdk.interfaces.IMainPresenter;
 import com.tobenull.multiflavorsdk.interfaces.IMainView;
 
-public class MainActivity extends AppCompatActivity implements IMainView {
+public class MainActivity extends Activity implements IMainView {
 
 	private IMainPresenter mainPresenter;
 	private TextView textView;

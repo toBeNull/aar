@@ -3,15 +3,15 @@
 buildscript {
     ext {
         debug = true
-        gradleVersion = '2.3.3'
+        gradleVersion = '3.2.1'
         minSdkVersion = 14
-        targetSdkVersion = 27
-        compileSdkVersion = 27
-        buildToolsVersion = '27.0.1'
+        targetSdkVersion = 28
+        compileSdkVersion = 28
+        buildToolsVersion = '28.0.3'
         versionCode = 1
         versionName = '1.0'
         applicationId = 'com.tobenull.multiflavorsdk'
-        supportVersion = '27.0.1'
+        supportVersion = '28.0.3'
         espressoVersion = '2.2.2'
         buildTime = "${new Date().format("yyyyMMdd_HHmmss.SSS")}"
 
@@ -32,6 +32,7 @@ buildscript {
             maven { url repourl }
         }
         jcenter()
+        google()
     }
     dependencies {
         classpath "com.android.tools.build:gradle:${rootProject.ext.gradleVersion}"
@@ -44,6 +45,7 @@ allprojects {
             maven { url repourl }
         }
         jcenter()
+        google()
     }
 }
 
@@ -52,16 +54,16 @@ task clean(type: Delete) {
 }
 
 task createJar(type: Jar) {
-    from zipTree('sdk/build/intermediates/bundles/baiduRelease/classes.jar')
+    from zipTree('sdk/build/intermediates/packaged-classes/baidu/release/classes.jar')
     into('assets') {
-        from fileTree(dir: 'sdk/build/intermediates/bundles/baiduRelease/default/assets')
+        from fileTree(dir: 'sdk/build/intermediates/library_assets/baiduRelease/packageBaiduReleaseAssets/out')
     }
     baseName = "SDK-${rootProject.ext.buildTime}-release"
     destinationDir = file('sdk/build/outputs/aar')
 }
 
 task zipSo(type: Zip) {
-    from('sdk/build/intermediates/bundles/baiduRelease/jni')
+    from('sdk/build/intermediates/jniLibs/baidu/release')
     baseName = "SDK-${rootProject.ext.buildTime}-so"
     destinationDir = file('sdk/build/outputs/aar')
 }

@@ -15,7 +15,8 @@ android {
 
     }
 
-    publishNonDefault true
+//    publishNonDefault true
+    flavorDimensions rootProject.ext.SDKProperties[0].product
     productFlavors {
         rootProject.ext.SDKProperties.each {
             productFlavors.create(it.product)
@@ -27,23 +28,23 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        debug {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
     }
-
 }
 
 dependencies {
     if (rootProject.ext.debug) {
-        compile project(':base')
+        implementation project(':base')
     } else {
         embedded project(':base')
         embedded project(':http')
     }
-    alibabaCompile files('libs/gaode-map.jar')
-    compile "com.android.support:appcompat-v7:${rootProject.ext.supportVersion}"
-    testCompile 'junit:junit:4.12'
-    androidTestCompile("com.android.support.test.espresso:espresso-core:${rootProject.ext.espressoVersion}", {
-        exclude group: 'com.android.support', module: 'support-annotations'
-    })
+    alibabaImplementation files('libs/gaode-map.jar')
+//    implementation "com.android.support:appcompat-v7:${rootProject.ext.supportVersion}"
+    testImplementation 'junit:junit:4.12'
 }
 
 rootProject.ext.SDKProperties.each {

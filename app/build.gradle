@@ -12,6 +12,7 @@ android {
         versionName rootProject.ext.versionName
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
+    flavorDimensions rootProject.ext.SDKProperties[0].product
     productFlavors {
         rootProject.ext.SDKProperties.each {
             productFlavors.create(it.product).setApplicationId(it.packageName)
@@ -19,6 +20,10 @@ android {
     }
     buildTypes {
         release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -33,15 +38,27 @@ android {
 dependencies {
     if (rootProject.ext.debug) {
         rootProject.ext.SDKProperties.each {
-            println "configurations: ${it.product}Compile"
-            dependencies.add("${it.product}Compile", project(
-                    path: ':sdk', configuration: "${it.product}Release")
-            )
+            println "configurations: ${it.product}Implementation"
+
+//            dependencies.add(
+//                    "${it.product}Implementation",
+//                    project(path: ':sdk', configuration: "${it.product}Release")
+//            )
+//            dependencies.add("${it.product}Implementation", project(
+//                    path: ':sdk', configuration: "${it.product}Debug")
+//            )
+            implementation project(':sdk')
+//            baiduImplementation project(path: ':sdk', configuration: 'baiduDebug')
+//            baiduImplementation project(path: ':sdk', configuration: 'baiduRelease')
+//            alibabaImplementation project(path: ':sdk', configuration: 'alibabaDebug')
+//            alibabaImplementation project(path: ':sdk', configuration: 'alibabaRelease')
+//            tencentImplementation project(path: ':sdk', configuration: 'tencentDebug')
+//            tencentImplementation project(path: ':sdk', configuration: 'tencentRelease')
         }
     } else {
 //        compile(name: 'sdk-release', ext: 'aar')
     }
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile "com.android.support:appcompat-v7:${rootProject.ext.supportVersion}"
-    testCompile 'junit:junit:4.12'
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+//    implementation "com.android.support:appcompat-v7:${rootProject.ext.supportVersion}"
+    testImplementation 'junit:junit:4.12'
 }

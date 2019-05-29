@@ -144,7 +144,8 @@ afterEvaluate {
             println "Product: $Product, product: $product"
 
             ext.class_release_dir.putAt(product, "$build_dir/intermediates/classes/$product/release")
-            ext.bundle_release_dir.putAt(product, "$build_dir/intermediates/bundles/${product}Release")
+//            ext.bundle_release_dir.putAt(product, "$build_dir/intermediates/bundles/${product}Release")
+            ext.bundle_release_dir.putAt(product, "$build_dir/intermediates/packaged-classes/${product}/release")
             ext.manifest_aaapt_dir.putAt(product, "$build_dir/intermediates/manifests/aapt/$product/release")
 
             // Merge Assets
