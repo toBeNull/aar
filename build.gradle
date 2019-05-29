@@ -18,8 +18,7 @@ buildscript {
         SDKProperties = [
                 [product: 'alibaba',  packageName: 'com.alibaba.demo', type: 'jar'],
                 [product: 'baidu',    packageName: 'com.baidu.demo',   type: 'aarjar'],
-                [product: 'tencent',  packageName: 'com.tencent.demo', type: 'aar'],
-//                [product: 'iqiyi',    packageName: 'com.iqiyi.demo',   type: 'aar'],
+//                [product: 'tencent',  packageName: 'com.tencent.demo', type: 'aar'],
         ]
 
         repo = [
